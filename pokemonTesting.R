@@ -1,38 +1,31 @@
-{
-  library(data.table)
-  library(stringr)
-  library(ggplot2)
-  library(plotly)
-}
-
-pokemonDT = data.table(read.csv("PokemonData.csv"))
-
-pokemonDT[Num == 29, Name := "NidoranF"]
-pokemonDT[Num == 32, Name := "NidoranM"]
-pokemonDT[Num == 669, Name := "Flabébé"]
-
-pokemonDT[, count := 1]
-pokemonDT[, count := sum(count), by = Num]
-
-pokemonDT[count != 1, isMega := str_detect(Name, "Mega")]
-pokemonDT[count == 1, isMega := FALSE]
-
-pokemonDT[, Type1 := as.factor(Type1)]
-pokemonDT[, Type2 := as.factor(Type2)]
-pokemonDT[, Generation := as.factor(Generation)]
-pokemonDT[Type2=="", Type2:=NA]
-pokemonDT[, isMonoType := is.na(Type2)]
-
-pokemonDT[, BST := HP + Attack + Defense + SpAtk + SpDef + Speed]
-pokemonDT[, bstCount := 1]
-pokemonDT[, bstCount := sum(bstCount), by = BST]
+source("setup.R")
+countByType = ggplot(data = pokemonByType) +
+  geom_col(aes(x=type, y=count, fill = types)) +
+  scale_fill_manual(values = pokemonByType[, colorCodes]) +
+  theme(legend.position = "none") +
+  labs(title = "Pokemon por tipo", x = "Tipo", y = "Cantidad de pokemon") + 
+  scale_y_continuous(breaks = seq(10, 130, by = 20))
+ggplotly(countByType, tooltip = "y")
 
 bstPlot  = ggplot(data = pokemonDT, aes()) +
-  geom_histogram(mapping = aes(x = BST), binwidth = 10)
+  geom_freqpoly(mapping = aes(x = BST), binwidth = 10) +
+  labs(x = "Total de Características Base (BST)", 
+        y = "Cantidad de pokemon") +
+  scale_x_continuous(breaks = seq(min(pokemonDT[,BST]), max(pokemonDT[,BST]), 
+                                  by = 20)) +
+  scale_y_continuous(breaks = seq(0,50, by = 5))
+  
 ggplotly(bstPlot)
-
-pokemonType1Plot = ggplot(data = pokemonDT) + geom_bar(aes(x = Type1))
-ggplotly(pokemonType1Plot)
-
-pokemonType2Plot = ggplot(data = pokemonDT) + geom_bar(aes(x = Type2))
-ggplotly(pokemonType2Plot)
+input = list("type1" = "Bug", "type2" = "Psychic", "stat" = BST)
+BST = "BST"
+ggplot() +
+  #Type 1
+  geom_freqpoly(aes(x = pokemonDT[Type1 == input$type1 | Type2 == input$type1, input$stat, with = FALSE][[1]], 
+                    color = input$type1),
+                binwidth = 10) + 
+  #Type 2
+  geom_freqpoly(aes(x = pokemonDT[Type1 == input$type2 | Type2 == input$type2, input$stat, with = FALSE][[1]], 
+                    color = input$type2),
+                binwidth = 10) + 
+  scale_color_manual(colorByType)
+labs()

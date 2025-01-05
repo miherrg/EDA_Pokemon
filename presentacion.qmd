@@ -1,0 +1,90 @@
+---
+title: "Pokemon Stats"
+author: "Miguel Herreros Gaona"
+format: 
+  revealjs:
+    incremental: true
+editor: visual
+server: shiny
+---
+
+```{r}
+#| context: setup
+#| include: false
+source("setup.R")
+```
+
+## Introducción
+- Conjunto de datos: Pokémon Gen I - Gen VI.
+- Número de entradas: 800.
+- Sin entradas vacías*.
+- 12 variables.
+
+## Variables {.smaller}
+:::: {.columns}
+
+::: {.column width="60%"}
+Categóricas
+
+- Num: Número de pokédex.
+- Name: Nombre del pokémon.
+- Type1: Tipo principal del pokémon.
+- Type2: Tipo secundario del pokémon (puede ser vacío).
+- Generation: Generación en la que se introdujo el pokémon.
+- Legendary: Bool que indica si el pokémon es legendario.
+:::
+
+::: {.column width="10%"}
+:::
+
+::: {.column width="30%"}
+Numéricas
+
+- HP: Puntos de salud.
+- Attack: Ataque físico.
+- Defense: Defensa física.
+- SpAtk: Ataque especial.
+- SpDef: Defensa especial.
+- Speed: Velocidad.
+:::
+
+::::
+
+## Variables calculadas
+- isMega: Bool que identifica las megaevoluciones.
+- BST: Total de características base.
+
+## Características por Tipo
+
+```{r}
+#| panel: sidebar
+selectInput("type1", "Primer Tipo", types)
+selectInput("type2", "Segundo Tipo", types)
+radioButtons("stat", "Característica a comparar", choices = statNames)
+```
+
+```{r}
+#| panel: fill
+plotOutput("statsPlot")
+```
+
+```{r}
+#| context: server
+
+output$statsPlot = renderPlot({
+  ggplot() +
+    #Type 1
+  geom_density(aes(x = pokemonDT[Type1 == input$type1 | Type2 == input$type1, input$stat, with = FALSE][[1]], 
+                    color = input$type1, fill = input$type1, alpha = 0.5)) + 
+  #Type 2
+  geom_density(aes(x = pokemonDT[Type1 == input$type2 | Type2 == input$type2, input$stat, with = FALSE][[1]], 
+                    color = input$type2, fill = input$type2, alpha = 0.5)) +
+    scale_color_manual(values = colorByType) +
+    scale_fill_manual(values = colorByType) +
+    scale_x_continuous(breaks = seq(0, 800, 20)) +
+    labs(title = "Características de los Pokémon", 
+         x = input$stat, y = "Densidad estimada de Pokémon", fill = "Tipo") +
+    guides(color = "none", alpha = "none")
+    })
+
+```
