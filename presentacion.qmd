@@ -1,5 +1,5 @@
 ---
-title: "Pokemon Stats"
+title: "Características Base de Pokémon"
 author: "Miguel Herreros Gaona"
 format: 
   revealjs:
@@ -14,24 +14,28 @@ server: shiny
 source("setup.R")
 ```
 
-## Introducción
-- Conjunto de datos: Pokémon Gen I - Gen VI.
-- Número de entradas: 800.
-- Sin entradas vacías*.
-- 12 variables.
+# Introducción
+
+## Resumen ejecutivo
+
+-   Conjunto de datos: Pokémon Gen I - Gen VI.
+-   Número de entradas: 800.
+-   Sin entradas vacías\*.
+-   12 variables.
+-   Dataset obtenido de [Kaggle](https://www.kaggle.com/datasets/mlomuscio/pokemon)
 
 ## Variables {.smaller}
-:::: {.columns}
 
+::: columns
 ::: {.column width="60%"}
 Categóricas
 
-- Num: Número de pokédex.
-- Name: Nombre del pokémon.
-- Type1: Tipo principal del pokémon.
-- Type2: Tipo secundario del pokémon (puede ser vacío).
-- Generation: Generación en la que se introdujo el pokémon.
-- Legendary: Bool que indica si el pokémon es legendario.
+-   Num: Número de pokédex.
+-   Name: Nombre del pokémon.
+-   Type1: Tipo principal del pokémon.
+-   Type2: Tipo secundario del pokémon (puede ser vacío).
+-   Generation: Generación en la que se introdujo el pokémon.
+-   Legendary: Bool que indica si el pokémon es legendario.
 :::
 
 ::: {.column width="10%"}
@@ -40,19 +44,83 @@ Categóricas
 ::: {.column width="30%"}
 Numéricas
 
-- HP: Puntos de salud.
-- Attack: Ataque físico.
-- Defense: Defensa física.
-- SpAtk: Ataque especial.
-- SpDef: Defensa especial.
-- Speed: Velocidad.
+-   HP: Puntos de salud.
+-   Attack: Ataque físico.
+-   Defense: Defensa física.
+-   SpAtk: Ataque especial.
+-   SpDef: Defensa especial.
+-   Speed: Velocidad.
+:::
 :::
 
-::::
-
 ## Variables calculadas
-- isMega: Bool que identifica las megaevoluciones.
-- BST: Total de características base.
+
+-   isMega: Bool que identifica las megaevoluciones.
+-   BST: Total de características base.
+-   category: Categoría del pokémon
+
+# Gráficas
+
+## Pokémon por tipo
+
+```{r}
+pokemonByTypePlot = ggplot(pokemonByType) +
+  geom_col(aes(x = type, y = count, fill = type)) +
+  scale_fill_manual(values = colorByType) +
+  guides(fill = "none") +
+  scale_y_continuous(breaks = seq(0,130,10)) +
+  labs(x = "Tipo", y="Número de pokémon")
+
+ggplotly(pokemonByTypePlot, tooltip = "y")
+```
+
+## Resumen de estadísticas
+
+::: panel-tabset
+### Gráfico de cajas (Base)
+
+```{r}
+boxPlot = ggplot(boxDT[stat!= "BST"]) +
+  geom_boxplot(mapping = aes(x = stat, y = value, fill = stat))+
+  labs(title = "Distribuciones de las características base", 
+       y = "Valor de la característica", 
+       x = "Característica") +
+  scale_y_continuous(breaks = seq(0, 255, 15)) +
+  guides(fill = "none")
+ggplotly(boxPlot)
+```
+
+### Gráfico de cajas (Total)
+
+```{r}
+boxPlot = ggplot(boxDT[stat == "BST"]) +
+  geom_boxplot(mapping = aes(x = stat, y = value, fill = stat))+
+  labs(title = "Distribuciones de las características base", 
+       y = "Valor de la característica", 
+       x = "Característica") +
+  scale_y_continuous(breaks = seq(0, 780, 30)) +
+  guides(fill = "none")
+ggplotly(boxPlot)
+```
+
+### Tabla
+
+```{r}
+rmarkdown::paged_table(describe(pokemonDT, omit = TRUE))
+```
+:::
+
+## Comparación entre normales, legendarios y megas.
+
+```{r}
+#| panel: sidebar
+radioButtons("stat", "Característica a comparar", choices = statNames)
+```
+
+```{r}
+#| panel: fill
+plotOutput("legenMegaComparison")
+```
 
 ## Características por Tipo
 
@@ -67,6 +135,31 @@ radioButtons("stat", "Característica a comparar", choices = statNames)
 #| panel: fill
 plotOutput("statsPlot")
 ```
+
+## Pokemon Bicho
+
+```{r}
+#| panel: sidebar
+radioButtons("stat", "Característica a comparar", choices = statNames)
+```
+
+```{r}
+#| panel: fill
+plotOutput("bugStageComparison")
+```
+
+# Conclusiones
+
+## Posibles mejoras y trabajo futuro
+
+-   Profundizar más en "sabiduría popular" de Pokémon.
+-   Encontrar un dataset del uso en competitivo y comparar.
+-   Añadir imágenes a la presentación.
+-   Personalizar y hacer "míos" los gráficos.
+-   Revisar los ejes, sobretodo en las gráficas con shiny.
+-   Entender como mostrar el código con "echo".
+
+# Gracias por vuestra atención.
 
 ```{r}
 #| context: server
@@ -85,6 +178,37 @@ output$statsPlot = renderPlot({
     labs(title = "Características de los Pokémon", 
          x = input$stat, y = "Densidad estimada de Pokémon", fill = "Tipo") +
     guides(color = "none", alpha = "none")
-    })
+})
+
+output$legenMegaComparison = renderPlot({
+  ggplot()+
+    geom_boxplot(mapping = 
+                   aes(x = pokemonDT[,category], 
+                       y = pokemonDT[, input$stat, 
+                                     with = FALSE][[1]], 
+                       fill = pokemonDT[,category])) +
+    labs(title = paste("Distribuciones de", input$stat), 
+       y = paste("Valor de", input$stat), 
+       x = "Categoría") +
+    scale_y_continuous(breaks = seq(0, 780, 30)) +
+    guides(fill = "none")
+    
+})
+
+output$bugStageComparison = renderPlot({
+  ggplot()+
+    geom_boxplot(
+      mapping = 
+        aes(x = pokemonDT[!is.na(bugStage), bugStage],
+            y = pokemonDT[!is.na(bugStage), input$stat,
+                          with = FALSE][[1]],
+            fill = pokemonDT[!is.na(bugStage), bugStage])) +
+    labs(title = paste("Distribuciones de", input$stat), 
+       y = paste("Valor de", input$stat), 
+       x = "Categoría") +
+    scale_y_continuous(breaks = seq(0, 780, 30)) +
+    guides(fill = "none")
+    
+})
 
 ```
